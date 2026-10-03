@@ -1,0 +1,5 @@
+# node_modules wird bewusst NICHT ignoriert –
+# sie müssen für den Docker-Build (COPY node_modules/) vorhanden sein.
+# Vor dem Commit: npm install --omit=dev ausführen.
+data/
+*.log
