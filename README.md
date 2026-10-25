@@ -27,6 +27,7 @@ Mit dem **SmartMatix Roborock Connector** startest und stoppst du deine Roborock
 - **Störungen** – meldet der Sauger einen Fehler (z. B. "Roboter steckt fest", "Hauptbürste blockiert"), erscheint sofort eine schließbare Nachricht in der App und der Hauptschalter "Reinigen" zeigt Sabotage (`maintenance.sabotage`, nutzbar in HmIP-Automationen). Ist die Störung behoben, verschwindet beides automatisch. Raumschalter melden keine Sabotage.
 - **Wartungshinweise** – ist die Laufzeit von Hauptbürste (300 h), Seitenbürste (200 h), Filter (150 h) oder Sensoren (30 h) erreicht oder meldet die Station etwas (z. B. "Schmutzwassertank voll"), erscheint eine schließbare Nachricht. Sie bleibt stehen – auch nach der Reinigung –, bis die Wartung erledigt und der Zähler in der Roborock-App zurückgesetzt ist. Abgefragt wird nach jeder Reinigung und einmal täglich.
 - **Optionaler Hinweis in der App** – Nachricht, solange gereinigt wird, mit der Angabe "ganze Wohnung" oder welche Räume
+- **Optional als Fahrzeug** – der Saugroboter zusätzlich als `VEHICLE`, z. B. "Staubi (Roborock S6 Saugroboter)", mit dem Akkustand des Saugers (`batteryState`); bei 20 % oder weniger setzt es `maintenance.lowBat`, z. B. für Automationen
 - **Auswahl per Haken** – nur Sauger mit gesetztem Haken "Zu Homematic IP hinzufügen" werden eingebunden
 - **Neue Geräte automatisch hinzufügen** – vor der Anmeldung gesetzt: alle Sauger; nachträglich gesetzt: nur wirklich neue
 - **Reinkludieren** – in der App gelöschte Schalter werden beim nächsten Speichern oder Plugin-Start (HCU Neustart) erneut hinzugefügt, solange der Haken gesetzt ist
@@ -52,8 +53,9 @@ Sauger mit den neueren Protokollen **A01/B01** (z. B. die Q7-/Q10-Serie) erschei
 |---|---|---|
 | Saugroboter | `SWITCH` "Reinigen (Gerätename)" | Ein = Reinigung starten, Aus = Stopp + zur Station |
 | je Raum (optional) | `SWITCH` "Reinige &lt;Raum&gt; (Gerätename)" | Ein = Raumreinigung, Aus = Stopp + zur Station |
+| Fahrzeug (optional) | `VEHICLE` "Gerätename (Roborock Modell Saugroboter)" | Akkustand des Saugers (0–100 %), `lowBat` bei ≤ 20 % |
 
-Alle Schalter haben den Modelltyp `roborock-vacuum-robot`.
+Alle Geräte haben den Modelltyp `roborock-vacuum-robot`.
 
 ---
 
@@ -62,7 +64,7 @@ Alle Schalter haben den Modelltyp `roborock-vacuum-robot`.
 | Voraussetzung | Version |
 |---|---|
 | Node.js | ≥ 18 |
-| HCU-Firmware | ≥ 1.6.16 |
+| HCU-Firmware | ≥ 1.7.9 |
 | Roborock-Konto | Anmeldung in der Roborock-App (nicht Mi Home / Xiaomi Home) |
 | Internetzugang der HCU | für Anmeldung, Geräteliste und Raumnamen; Steuerung läuft lokal, die Cloud dient als Rückfall |
 | Entwicklermodus | aktiviert (HCUweb) |
@@ -135,6 +137,7 @@ Die Einstellungsseite der HCU kann nichts nachladen – deshalb erfolgt die Anme
 | **Schalter für jeden Raum anlegen** | Zusätzlich je Raum der aktiven Karte ein Schalter. Der Sauger muss beim Speichern online sein |
 | **Hinweis in der App bei laufender Reinigung** | Schließbare Nachricht in der Homematic IP App, solange der Sauger reinigt – "ganze Wohnung", die Namen der Räume (bei Start über das Plugin), "einzelne Räume" (bei Start in der Roborock-App) oder "Zone". Verschwindet nach Ende der Reinigung automatisch |
 | **Wartungshinweise in der App** | Nachricht, wenn Hauptbürste, Seitenbürste, Filter oder Sensoren fällig sind oder die Station etwas meldet. Standard: an |
+| **Saugroboter als Fahrzeug anlegen** | Zusätzlich ein Gerät "Gerätename (Roborock Modell Saugroboter)" vom Typ Fahrzeug (`VEHICLE`), das den Akkustand anzeigt und bei ≤ 20 % "Batterie schwach" (`lowBat`) meldet. Standard: aus |
 
 ---
 
