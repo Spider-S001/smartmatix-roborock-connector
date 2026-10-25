@@ -65,7 +65,10 @@ function load() {
 function save(config) {
   try {
     fs.mkdirSync(DATA_PATH, { recursive: true });
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+    // Atomar schreiben: erst Temp-Datei, dann umbenennen (nie eine halb geschriebene Datei)
+    const tmp = `${CONFIG_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(config, null, 2), 'utf8');
+    fs.renameSync(tmp, CONFIG_FILE);
     log.info(`Konfiguration gespeichert in: ${CONFIG_FILE}`);
   } catch (err) {
     log.error('Fehler beim Schreiben der config.json:', err.message);

@@ -30,12 +30,14 @@
  *     "model":        "roborock.vacuum.s6",
  *     "productName":  "Roborock S6",
  *     "pv":           "1.0",               // Protokollversion
+ *     "fv":           "02.29.02",          // Firmware-Version (wird an der HCU angezeigt)
  *     "localKey":     "...",               // Schlüssel für die Nachrichten
  *     "supported":    true,                // Saugroboter mit Protokoll 1.0
  *     "online":       true,
  *     "addToHcu":     true,                // Haken "Zu Homematic IP hinzufügen"
  *     "roomSwitches": false,               // Haken "Schalter je Raum"
  *     "notifyCleaning": false,             // Haken "Hinweis bei laufender Reinigung"
+ *     "batteryDevice": false,              // Haken "Akkustand als Gerät" (VEHICLE)
  *     "notifyMaintenance": true,           // Haken "Wartungshinweise in der App" (Standard: an)
  *     "maintNotice": "filter,sensor",      // bereits gemeldete Wartungen (kein erneuter Hinweis nach Neustart)
  *     "rooms":        [ { "iotId": "123", "segmentId": 16, "name": "Küche", "active": true } ],
@@ -89,7 +91,10 @@ function save(type, data) {
   const fp = filePath(type);
   try {
     fs.mkdirSync(DATA_PATH, { recursive: true });
-    fs.writeFileSync(fp, JSON.stringify(data, null, 2), 'utf8');
+    // Atomar schreiben: erst Temp-Datei, dann umbenennen (nie eine halb geschriebene Datei)
+    const tmp = `${fp}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+    fs.renameSync(tmp, fp);
     log.debug(`${FILES[type].file} gespeichert.`);
   } catch (err) {
     log.error(`Fehler beim Schreiben der ${FILES[type].file}:`, err.message);

@@ -74,6 +74,9 @@ const DEVICE_LIST_REFRESH_MS = 60 * 60 * 1000;
 const DEVICE_LIST_MAX_AGE_MS = 10 * 60 * 1000;
 const ROOMS_MAX_AGE_MS       = 10 * 60 * 1000;
 
+// Akku-Gerät (VEHICLE): lowBat bei höchstens diesem Ladestand
+const LOW_BATTERY_PERCENT = 20;
+
 // Verschleißteile nach jeder Reinigung und mindestens so oft abfragen
 const MAINT_CHECK_MS = 24 * 60 * 60 * 1000;
 
@@ -402,6 +405,11 @@ class Plugin {
       body:     { success: true, devices: toReport.map(devices.toHcu) },
     });
 
+    // Diagnose: Fahrzeug-Geräte genau so protokollieren, wie sie an die HCU gehen
+    for (const d of toReport.filter(x => x.channel === devices.BATTERY_CHANNEL)) {
+      log.info(`DISCOVER Fahrzeug: ${JSON.stringify(devices.toHcu(d))}`);
+    }
+
     devices.setFlags(toReport.map(d => d.deviceId), { alreadyIncluded: true, excluded: false });
     log.info(`DISCOVER_RESPONSE gesendet mit ${toReport.length} Geraet(en)${reinclude ? ' (Reinklusion)' : ''}.`);
   }
@@ -445,6 +453,7 @@ class Plugin {
 
     const device = devices.getById(deviceId);
     if (!device || device.excluded) return fail('UNKNOWN_DEVICE', 'Device is not managed by this plugin anymore.');
+    if (device.channel === devices.BATTERY_CHANNEL) return fail('INVALID_REQUEST', 'Battery device cannot be controlled.');
     const sw = Array.isArray(features) ? features.find(f => f.type === 'switchState') : null;
     if (!sw) return fail('INVALID_REQUEST', 'No switchState in control request.');
     if (!this._loggedIn() && !this._local.get(device.duid)?.connected) return fail('CONFIG_REQUIRED', 'Not logged in to Roborock.');
@@ -599,6 +608,16 @@ class Plugin {
     const unreach = Boolean(rt.unreach || (rt.status == null && robot?.online === false) || robot?.available === false);
     let on;
     
+    if (dev.channel === devices.BATTERY_CHANNEL) {
+      const battery = Number(rt.status?.battery);
+      if (!Number.isFinite(battery) || rt.status?.battery == null) return [{ type: 'maintenance', unreach }];
+      // lowBat ab LOW_BATTERY_PERCENT (z. B. für HmIP-Automationen)
+      return [
+        { type: 'batteryState', batteryLevel: Math.min(1, Math.max(0, battery / 100)), batteryCapacity: devices.BATTERY_CAPACITY_WH },
+        { type: 'maintenance', unreach, lowBat: battery <= LOW_BATTERY_PERCENT },
+      ];
+    }
+
     if (dev.channel === 'main') {
       on = vacuum.isCleaning(rt.status);
       // Fehler des Saugers nur am Hauptschalter als Sabotage melden
@@ -626,6 +645,17 @@ class Plugin {
       if (!force && !hasChanges(dev.features, live)) continue;
       devices.mergeFeatures(dev.deviceId, live);
       this._sendStatusEvent(dev.deviceId, live);
+
+      // Fahrzeug: ersten Akkustand nach dem Start und lowBat-Wechsel protokollieren
+      if (dev.channel === devices.BATTERY_CHANNEL) {
+        const level = live.find(f => f.type === 'batteryState')?.batteryLevel;
+        const low   = live.find(f => f.type === 'maintenance')?.lowBat;
+        if (level !== undefined && (!rt.vehicleLogged || low !== rt.vehicleLow)) {
+          log.info(`Fahrzeug ${robot?.name ?? duid}: Akkustand ${Math.round(level * 100)} %${low ? ' (Batterie schwach)' : ''} an die HCU gemeldet: ${JSON.stringify(live)}`);
+          rt.vehicleLogged = true;
+          rt.vehicleLow    = low;
+        }
+      }
     }
     
     if (!inGrace) this._updateCleaningNotice(robot, rt);
@@ -1141,6 +1171,7 @@ class Plugin {
           model:       product?.model ?? '',
           productName: product?.name ?? '',
           pv:          d.pv ?? '1.0',
+          fv:          d.fv ?? '',          // Firmware-Version des Saugers
           localKey:    d.localKey,
           online:      d.online !== false,
           supported:   vacuum.isSupported(d, product),
@@ -1322,6 +1353,9 @@ class Plugin {
 
       if (robot.addToHcu && robot.supported && robot.available !== false) {
         const wanted = [{ channel: 'main', name: tr(this._lang, 'channel.main', { device: robot.name }) }];
+        if (robot.batteryDevice) {
+          wanted.push({ channel: devices.BATTERY_CHANNEL, name: tr(this._lang, 'channel.battery', { device: robot.name, product: productLabel(robot) }) });
+        }
         if (robot.roomSwitches) {
           for (const room of robot.rooms ?? []) {
             wanted.push({
@@ -1337,6 +1371,8 @@ class Plugin {
           const before = devices.getById(id);
           const dev    = devices.ensure(robot.duid, w.channel, w.name);
           if (!before) added++;
+          // Firmware des Saugers an allen seinen HCU-Geräten anzeigen
+          if (robot.fv && dev.firmwareVersion !== robot.fv) devices.setFlags([id], { firmwareVersion: robot.fv });
           if (reinclude && dev.excluded) {
             devices.setFlags([id], { excluded: false, alreadyIncluded: false });
             added++;
@@ -1461,6 +1497,11 @@ class Plugin {
         maintChanged.push(r.duid);
         changed = true;
         log.info(`Roborock: Wartungshinweise fuer "${r.name}" ${r.notifyMaintenance ? 'an' : 'aus'}.`);
+      }
+      if (props[`${gid}_battery`] !== undefined && Boolean(r.batteryDevice) !== toBool(props[`${gid}_battery`])) {
+        r.batteryDevice = toBool(props[`${gid}_battery`]);
+        changed = true;
+        log.info(`Roborock: Akku-Geraet fuer "${r.name}" ${r.batteryDevice ? 'an' : 'aus'}.`);
       }
       if (props[`${gid}_rooms`] !== undefined && r.roomSwitches !== toBool(props[`${gid}_rooms`])) {
         r.roomSwitches = toBool(props[`${gid}_rooms`]);
@@ -1722,6 +1763,15 @@ class Plugin {
         defaultValue: false,
         currentValue: Boolean(r.notifyCleaning),
       };
+      properties[`${gid}_battery`] = {
+        friendlyName: t(lang, 'device.battery.label'),
+        description:  t(lang, 'device.battery.description'),
+        dataType:     'BOOLEAN',
+        groupId:      gid,
+        order:        5,
+        defaultValue: false,
+        currentValue: Boolean(r.batteryDevice),
+      };
       properties[`${gid}_maint`] = {
         friendlyName: t(lang, 'device.maint.label'),
         description:  t(lang, 'device.maint.description'),
@@ -1898,6 +1948,13 @@ class Plugin {
 // ---------------------------------------------------------------------------
 
 function toBool(v) { return v === true || v === 'true'; }
+
+/** Modellbezeichnung für Gerätenamen, z. B. "Roborock S6" */
+function productLabel(robot) {
+  const name = String(robot.productName || robot.model || '').trim();
+  if (!name) return 'Roborock';
+  return /^roborock\b/i.test(name) ? name : `Roborock ${name}`;
+}
 
 /** Eindeutige Kennung des Roborock-Kontos (rruid, sonst uid, sonst E-Mail) */
 function accountIdOf(userData, email) {

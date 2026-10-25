@@ -1,6 +1,6 @@
 {
   "name": "smartmatix-roborock-connector",
-  "version": "0.2.8",
+  "version": "0.3.4",
   "description": "Ein Plugin, um deine Roborock-Saugroboter zur HCU hinzuzufügen.",
   "main": "src/index.js",
   "scripts": {
@@ -24,7 +24,7 @@
   "dependencies": {
     "fs": "^0.0.1-security",
     "mqtt": "^5.16.0",
-    "uuid": "^11.1.0",
-    "ws": "^8.19.0"
+    "uuid": "^11.1.1",
+    "ws": "^8.22.0"
   }
 }

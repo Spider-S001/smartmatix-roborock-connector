@@ -5,7 +5,7 @@ All licenses are reproduced below as required by their respective terms.
 
 ---
 
-## ws (v8.19.0)
+## ws (v8.22.0)
 
 WebSocket client and server for Node.js.  
 https://github.com/websockets/ws

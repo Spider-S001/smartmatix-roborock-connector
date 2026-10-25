@@ -26,15 +26,15 @@ ENTRYPOINT ["node", "src/index.js", "de.smartmatix.plugin.roborock-connector", "
 #  Plugin-Metadaten (PFLICHT für die HCU – exakt dieses Label-Format)
 #
 #  pluginId      muss identisch mit der ENTRYPOINT-Plugin-ID sein
-#  hcuMinVersion mindestens 1.6.16 für Connect API 1.0.1
+#  hcuMinVersion 1.7.9
 #  scope         CLOUD (Anmeldung und Geräteliste über die Roborock-Cloud; Steuerung lokal mit Cloud-Rückfall)
 # ---------------------------------------------------------------------------
 LABEL de.eq3.hmip.plugin.metadata='\
 {\
   "pluginId": "de.smartmatix.plugin.roborock-connector",\
   "issuer": "Kevin Schipper",\
-  "version": "0.2.8",\
-  "hcuMinVersion": "1.6.16",\
+  "version": "0.3.4",\
+  "hcuMinVersion": "1.7.9",\
   "scope": "CLOUD",\
   "settings": [],\
   "friendlyName": {\

@@ -17,6 +17,9 @@ const log          = require('./logger');
 const devicesStore = require('./devicesStore');
 
 const MODEL_TYPE = 'roborock-vacuum-robot';
+const BATTERY_CHANNEL = 'battery';
+// Akkukapazität in Wh für batteryState (S-Serie: 5200 mAh × 14,4 V ≈ 75 Wh)
+const BATTERY_CAPACITY_WH = 75;
 
 // Map<deviceId, deviceObject>
 let registry = load();
@@ -54,7 +57,7 @@ function getActive() {
 /**
  * Legt einen Schalter für einen Sauger bzw. Raum an (falls noch nicht vorhanden)
  * @param {string} duid
- * @param {string} channel       'main' | 'room-<iotId>'
+ * @param {string} channel       'main' | 'room-<iotId>' | 'battery'
  * @param {string} friendlyName
  * @returns {object} das neue oder bestehende Gerät
  */
@@ -68,17 +71,32 @@ function ensure(duid, channel, friendlyName) {
       m.sabotage = false;
       persist();
     }
+    // Akku-Gerät aus 0.2.9 ohne lowBat-Attribut > ergänzen
+    if (channel === BATTERY_CHANNEL && m && m.lowBat === undefined) {
+      m.lowBat = false;
+      persist();
+    }
+    // Fahrzeug aus älteren Versionen ohne Akkukapazität > ergänzen
+    const b = existing.features.find(f => f.type === 'batteryState');
+    if (channel === BATTERY_CHANNEL && b && b.batteryCapacity === undefined) {
+      b.batteryCapacity = BATTERY_CAPACITY_WH;
+      persist();
+    }
     return existing;
   }
 
+  // Akku: VEHICLE mit batteryState (0–1); Schalter: SWITCH.
+  // Sabotage am Hauptschalter = Sauger meldet einen Fehler (steckt fest, Bürste blockiert, etc.)
+  const isBattery = channel === BATTERY_CHANNEL;
   const device = {
-    deviceType:      'SWITCH',
+    deviceType:      isBattery ? 'VEHICLE' : 'SWITCH',
     deviceId,
     friendlyName:    sanitize(friendlyName),
     modelType:       MODEL_TYPE,
-    // Sabotage = Sauger meldet einen Fehler (steckt fest, Bürste blockiert, etc.)
-    features:        [{ type: 'switchState', on: false },
-                      channel === 'main' ? { type: 'maintenance', unreach: false, sabotage: false } : { type: 'maintenance', unreach: false }],
+    features:        isBattery
+      ? [{ type: 'batteryState', batteryLevel: 0, batteryCapacity: BATTERY_CAPACITY_WH }, { type: 'maintenance', unreach: false, lowBat: false }]
+      : [{ type: 'switchState', on: false },
+         channel === 'main' ? { type: 'maintenance', unreach: false, sabotage: false } : { type: 'maintenance', unreach: false }],
     duid,
     channel,
     alreadyIncluded: false,
@@ -130,6 +148,7 @@ function toHcu(device) {
     deviceType:   device.deviceType,
     friendlyName: device.friendlyName,
     modelType:    device.modelType,
+    ...(device.firmwareVersion ? { firmwareVersion: device.firmwareVersion } : {}),
     features:     device.features,
   };
 }
@@ -143,7 +162,7 @@ function sanitize(value) {
 }
 
 module.exports = {
-  MODEL_TYPE,
+  MODEL_TYPE, BATTERY_CHANNEL, BATTERY_CAPACITY_WH,
   getAll, getById, getByDuid, getActive,
   ensure, remove, setFlags, mergeFeatures, toHcu, reload,
   robotKey, makeDeviceId, roomChannel, sanitize,

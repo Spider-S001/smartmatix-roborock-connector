@@ -154,7 +154,10 @@
     "dock.44": "Wasserfilter der Station verstopft",
     "dock.46": "Staubbehälter nicht eingesetzt",
     "dock.53": "Reinigungstank voll oder verstopft",
-    "dock.unknown": "Meldung der Station (Code {code})"
+    "dock.unknown": "Meldung der Station (Code {code})",
+    "channel.battery": "{device} ({product} Saugroboter)",
+    "device.battery.label": "Saugroboter als Fahrzeug anlegen",
+    "device.battery.description": "Legt den Saugroboter zusätzlich als Gerät vom Typ Fahrzeug an, z. B. \"Staubi (Roborock S6 Saugroboter)\". Es zeigt den Akkustand und meldet bei 20 % oder weniger \"Batterie schwach\" (z. B. für Automationen)."
   },
   "en": {
     "group.general.name": "General",
@@ -311,6 +314,9 @@
     "dock.44": "Dock water filter blocked",
     "dock.46": "Dustbin not installed",
     "dock.53": "Cleaning tank full or blocked",
-    "dock.unknown": "Dock message (code {code})"
+    "dock.unknown": "Dock message (code {code})",
+    "channel.battery": "{device} ({product} robot vacuum)",
+    "device.battery.label": "Add robot vacuum as vehicle",
+    "device.battery.description": "Additionally adds the robot vacuum as a device of type vehicle, e.g. \"Vaccy (Roborock S6 robot vacuum)\". It shows the battery level and reports \"low battery\" at 20 % or less (e.g. for automations)."
   }
 }
